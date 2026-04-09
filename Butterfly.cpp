@@ -5,6 +5,7 @@
 #include <deque>
 #include <string>
 #include <windows.h>
+#include <string>
 #include <chrono>
 #include <algorithm>
 #include <SDL2/SDL.h>
@@ -86,52 +87,53 @@ SDL_Texture* backgroundTexture = nullptr;
 Mix_Music* music = nullptr;
 Mix_Chunk* SrokeSound = nullptr;
 Mix_Chunk* DestroySound = nullptr;
-Butterfly butterfly(10, 10, 160, 140, 10, 10);
-std::deque<building> builds;
+Mix_Chunk* AlienSpeechSound = nullptr;
+Butterfly butterfly(15, 15, 160, 140, 10, 10);
+deque<building> builds;
 
 bool init() {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cerr << "SDL could not initialize! SDL Error: " << SDL_GetError() << std::endl;
+        cerr << "SDL could not initialize! SDL Error: " << SDL_GetError() << endl;
         return false;
     }
 
     window = SDL_CreateWindow("Mad Butterfly", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
         SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     if (window == nullptr) {
-        std::cerr << "Window could not be created! SDL Error: " << SDL_GetError() << std::endl;
+        cerr << "Window could not be created! SDL Error: " << SDL_GetError() << endl;
         return false;
     }
 
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (renderer == nullptr) {
-        std::cerr << "Renderer could not be created! SDL Error: " << SDL_GetError() << std::endl;
+        cerr << "Renderer could not be created! SDL Error: " << SDL_GetError() << endl;
         return false;
     }
 
     int imgFlags = IMG_INIT_PNG;
     if (!(IMG_Init(imgFlags) & imgFlags)) {
-        std::cerr << "SDL_image could not initialize! SDL_image Error: " << IMG_GetError() << std::endl;
+        cerr << "SDL_image could not initialize! SDL_image Error: " << IMG_GetError() << endl;
         return false;
     }
 
     if (TTF_Init() == -1) {
-        std::cerr << "Failed to initialize SDL_ttf! SDL_ttf Error: " << TTF_GetError() << std::endl;
+        cerr << "Failed to initialize SDL_ttf! SDL_ttf Error: " << TTF_GetError() << endl;
         return false;
     }
     // Инициализация SDL_mixer
     if (Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048) < 0) {
-        std::cerr << "SDL_mixer could not initialize! SDL_mixer Error: " << Mix_GetError() << std::endl;
+        cerr << "SDL_mixer could not initialize! SDL_mixer Error: " << Mix_GetError() << endl;
         return false;
     }
 
     return true;
 }
 
-SDL_Texture* loadTexture(const std::string& path) {
+SDL_Texture* loadTexture(const string& path) {
     SDL_Texture* newTexture = nullptr;
     SDL_Surface* loadedSurface = IMG_Load(path.c_str());
     if (loadedSurface == nullptr) {
-        std::cerr << "Unable to load image " << path << "! SDL_image Error: " << IMG_GetError() << std::endl;
+        cerr << "Unable to load image " << path << "! SDL_image Error: " << IMG_GetError() << endl;
     }
     else {
         // Установка цвета для прозрачности
@@ -139,7 +141,7 @@ SDL_Texture* loadTexture(const std::string& path) {
 
         newTexture = SDL_CreateTextureFromSurface(renderer, loadedSurface);
         if (newTexture == nullptr) {
-            std::cerr << "Unable to create texture from " << path << "! SDL Error: " << SDL_GetError() << std::endl;
+            cerr << "Unable to create texture from " << path << "! SDL Error: " << SDL_GetError() << endl;
         }
         else {
             // Устанавливаем режим смешивания для текстуры
@@ -170,24 +172,30 @@ bool loadMedia() {
     // Загрузка звуков
     music = Mix_LoadMUS("sounds/bckg_2.wav");
     if (music == nullptr) {
-        std::cerr << "Failed to load background music! SDL_mixer Error: " << Mix_GetError() << std::endl;
+        cerr << "Failed to load background music! SDL_mixer Error: " << Mix_GetError() << endl;
         return false;
     }
 
     SrokeSound = Mix_LoadWAV("sounds/butterfly_stroke.wav");
     if (SrokeSound == nullptr) {
-        std::cerr << "Failed to load stroke sound effect! SDL_mixer Error: " << Mix_GetError() << std::endl;
+        cerr << "Failed to load sroke sound effect! SDL_mixer Error: " << Mix_GetError() << endl;
         return false;
     }
 
     DestroySound = Mix_LoadWAV("sounds/building_destroing.wav");
     if (DestroySound == nullptr) {
-        std::cerr << "Failed to load destroy dound effect! SDL_mixer Error: " << Mix_GetError() << std::endl;
+        cerr << "Failed to load destroy sound effect! SDL_mixer Error: " << Mix_GetError() << endl;
+        return false;
+    }
+
+    AlienSpeechSound = Mix_LoadWAV("sounds/Alien_Speech_Sound.wav");
+    if (AlienSpeechSound == nullptr) {
+        cerr << "Failed to load destroy sound effect! SDL_mixer Error: " << Mix_GetError() << endl;
         return false;
     }
     //воспроизведение фоновой музыки
     Mix_PlayMusic(music, -1);
-
+    Mix_PlayChannel(-1, AlienSpeechSound, 0);
     return true;
 }
 
@@ -227,23 +235,23 @@ void close() { // Освобождение памяти
     SDL_Quit();
 }
 
-void drawText(const std::string& text, int x, int y, int fontSize, SDL_Color color) { //подключение шрифта
+void drawText(const string& text, int x, int y, int fontSize, SDL_Color color) { //подключение шрифта
     TTF_Font* font = TTF_OpenFont("Bender.ttf", fontSize);
     if (font == nullptr) {
-        std::cerr << "Failed to load font! SDL_ttf Error: " << TTF_GetError() << std::endl;
+        cerr << "Failed to load font! SDL_ttf Error: " << TTF_GetError() << endl;
         return;
     }
 
     SDL_Surface* textSurface = TTF_RenderUTF8_Solid(font, text.c_str(), color);
     if (textSurface == nullptr) {
-        std::cerr << "Unable to render text surface! SDL_ttf Error: " << TTF_GetError() << std::endl;
+        cerr << "Unable to render text surface! SDL_ttf Error: " << TTF_GetError() << endl;
         TTF_CloseFont(font);
         return;
     }
 
     SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
     if (textTexture == nullptr) {
-        std::cerr << "Unable to create texture from rendered text! SDL Error: " << SDL_GetError() << std::endl;
+        cerr << "Unable to create texture from rendered text! SDL Error: " << SDL_GetError() << endl;
         SDL_FreeSurface(textSurface);
         TTF_CloseFont(font);
         return;
@@ -264,7 +272,7 @@ void showGameOverScreen(int score, bool res) { //GAME OVER
     if (res) drawText(u8"Вы выиграли!", SCREEN_WIDTH / 2 - 180, SCREEN_HEIGHT / 2 - 120, 48, { 255, 0, 0, 255 });
     else { drawText(u8"Вы проиграли!", SCREEN_WIDTH / 2 - 180, SCREEN_HEIGHT / 2 - 120, 48, { 255, 0, 0, 255 }); }
     drawText(u8"Игра окончена!", SCREEN_WIDTH / 2 - 200, SCREEN_HEIGHT / 2 - 50, 48, { 255, 0, 0, 255 });
-    drawText(u8"Ваш счёт: " + std::to_string(score), SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 + 50, 36, { 255, 0, 0, 255 });
+    drawText(u8"Ваш счёт: " + to_string(score), SCREEN_WIDTH / 2 - 150, SCREEN_HEIGHT / 2 + 50, 36, { 255, 0, 0, 255 });
     SDL_RenderPresent(renderer);
     //Нажатие Enter
     SDL_Event event;
@@ -287,12 +295,12 @@ int main(int argc, char* argv[])
     setlocale(LC_ALL, "rus");
 
     if (!init()) {
-        std::cerr << "Failed to initialize!" << std::endl;
+        cerr << "Failed to initialize!" << endl;
         return 1;
     }
 
     if (!loadMedia()) {
-        std::cerr << "Failed to load media!" << std::endl;
+        cerr << "Failed to load media!" << endl;
         close();
         return 1;
     }
@@ -313,10 +321,10 @@ int main(int argc, char* argv[])
 
     SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
     SDL_RenderClear(renderer);
-    drawText("Mad Butterfly", SCREEN_WIDTH / 2 - 150, 100, 52, { 0, 0, 0, 255 });
-    drawText(u8"Автор: Давтян Степан", SCREEN_WIDTH / 2 - 250, 200, 28, { 0, 0, 0, 255 });
+    drawText(u8"Mad Butterfly", SCREEN_WIDTH / 2 - 180, 100, 60, { 0, 0, 0, 255 });
+    drawText(u8"Автор: Давтян Степан", SCREEN_WIDTH / 2 - 130, 200, 28, { 0, 0, 0, 255 });
     drawText(u8"Цель: Уничтожить все здания за наименьшее количество времени.", SCREEN_WIDTH / 2 - 400, 300, 28, { 0, 0, 0, 255 });
-    drawText(u8"Управление: пробел - взмах бабочки, Enter - начать игру.", SCREEN_WIDTH / 2 - 350, 400, 28, { 0, 0, 0, 255 });
+    drawText(u8"Управление: Стрелки вправо/влево - взмах бабочки, Enter - начать игру.", SCREEN_WIDTH / 2 - 430, 400, 28, { 0, 0, 0, 255 });
     SDL_RenderPresent(renderer);
 
     //Нажатие Enter
@@ -342,13 +350,13 @@ int main(int argc, char* argv[])
                 quit = true;
             }
             else if (e.type == SDL_KEYDOWN) {
-                if (e.key.keysym.sym == SDLK_RIGHT || e.key.keysym.sym == SDLK_LEFT && j % 2 == 0) {
+                if ((e.key.keysym.sym == SDLK_RIGHT || e.key.keysym.sym == SDLK_LEFT) && j % 2 == 0) {
                     butterfly.frame++;
                     builds.front().frame++;
                     if (butterfly.frame == 3) butterfly.frame = 0;
                     butterfly.speed += 5;
                     builds.front().health -= butterfly.damage * butterfly.speed;
-                    if (builds.front().health < 0) { builds.pop_front(); count--; butterfly.speed = 10;}
+                    if (builds.front().health < 0) { builds.pop_front(); count--; butterfly.speed -= 25; }
                     if (count == 0) {
                         quit = true;
                         showGameOverScreen(score, true); // Показать экран окончания игры
@@ -382,7 +390,7 @@ int main(int argc, char* argv[])
             build.render(renderer, buildingSprite);
         }
 
-        drawText("Счёт: " + std::to_string(score), 10, 10, 32, { 255, 255, 0, 255 });
+        drawText(u8"Счёт: " + to_string(score), 10, 10, 32, { 255, 255, 0, 255 });
         SDL_RenderPresent(renderer);
 
         SDL_Delay(10);
